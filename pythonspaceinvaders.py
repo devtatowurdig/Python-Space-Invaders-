@@ -3,7 +3,8 @@ import pygame
 import time
 import math
 
-
+explosoes = []
+TEMPO_EXPLOSAO = 300
 TAMANHO_GRADE = 21
 TAMANHO_BOX = 28
 MARGEM = 10
@@ -18,7 +19,7 @@ TAMANHO_TELA_CALCULADO = (TAMANHO_BOX + MARGEM) * TAMANHO_GRADE + MARGEM
 sprite_player = pygame.transform.scale(pygame.image.load("naves/player.png"), (TAMANHO_BOX, TAMANHO_BOX))
 sprite_inimigo = pygame.transform.scale(pygame.image.load("naves/inimigo.png"), (TAMANHO_BOX, TAMANHO_BOX))
 sprite_tiro = pygame.transform.scale(pygame.image.load("naves/tiro.png"), (TAMANHO_BOX, TAMANHO_BOX))
-sprite_colisao = pygame.transform.scale(pygame.image.load("naves/colisao.gif"), (TAMANHO_BOX, TAMANHO_BOX))
+sprite_colisao = pygame.transform.scale(pygame.image.load("naves/colisao.png"), (TAMANHO_BOX, TAMANHO_BOX))
 
 tabuleiro = []
 
@@ -38,9 +39,14 @@ def posiciona_player(player_x, player_y):
     tabuleiro[player_y][player_x] = PLAYER
 
 def posiciona_inimigos(qtd_inimigos):
-    colunas_inimigos = random.sample(range(TAMANHO_GRADE), qtd_inimigos) #sorteia 2 números do range para posicionar os inimigos
-    for c in colunas_inimigos:
-        tabuleiro[0][c] = INIMIGO
+    colunas_inimigos = random.sample(range(TAMANHO_GRADE), qtd_inimigos) 
+    colunas_inimigos_hard = random.sample(range(TAMANHO_GRADE), qtd_inimigos) 
+    for indice_coluna in colunas_inimigos:
+        tabuleiro[0][indice_coluna] = INIMIGO
+        if wave >= 3:
+            for indice_coluna in colunas_inimigos_hard:
+                tabuleiro[2][indice_coluna] = INIMIGO
+        
         
 def conta_inimigos(tabuleiro):
     contador_total = 0
@@ -48,8 +54,6 @@ def conta_inimigos(tabuleiro):
         inimigos_ingame = linha.count(INIMIGO)
         contador_total = contador_total + inimigos_ingame
     return contador_total
-
-
 
 def desenha_tabuleiro(screen, tabuleiro):
     for indice_linha in range(TAMANHO_GRADE):
@@ -78,11 +82,18 @@ def move_inimigo(tabuleiro, player_x, player_y, pontuacao):
                
                 if linha_abaixo == player_y and indice_coluna == player_x:
                     tabuleiro[indice_linha][indice_coluna] = VAZIO #inimigo some
+                    tabuleiro[player_y][player_x] = COLISAO
+                    screen.fill((0, 0, 0))
+                    desenha_tabuleiro(screen, tabuleiro)
+                    pygame.display.flip()
+                    time.sleep(0.7)
+                    
                     pontuacao = max(0, pontuacao - 5) #perde 5 pontos
-
+                    
                     if pontuacao <= 0:
                         tabuleiro[player_y][player_x] = COLISAO
-                        return pontuacao, True, escapou
+                    
+                    return pontuacao, True, escapou
                     
                 elif tabuleiro[linha_abaixo][indice_coluna] == VAZIO:
                     tabuleiro[linha_abaixo][indice_coluna] = INIMIGO
@@ -113,6 +124,7 @@ def atirar(tabuleiro, player_x, player_y):
         tabuleiro[player_y - 1][player_x] = TIRO_PLAYER
             
 def move_tiros(tabuleiro):
+    global explosoes
     inimigos_abatidos = 0
     linha_topo = 0
     for indice_coluna in range(TAMANHO_GRADE): 
@@ -126,7 +138,8 @@ def move_tiros(tabuleiro):
                 linha_acima = indice_linha - 1
                 
                 if tabuleiro[linha_acima][indice_coluna] == INIMIGO:
-                   tabuleiro[linha_acima][indice_coluna] = VAZIO #remove inimigo
+                   tabuleiro[linha_acima][indice_coluna] = COLISAO
+                   explosoes.append((linha_acima, indice_coluna, pygame.time.get_ticks()))
                    tabuleiro[indice_linha][indice_coluna] = VAZIO #remove tiro
                    inimigos_abatidos += 1
                 elif tabuleiro[linha_acima][indice_coluna] == VAZIO:
@@ -137,7 +150,7 @@ def move_tiros(tabuleiro):
                     tabuleiro[indice_linha][indice_coluna] = VAZIO
     return inimigos_abatidos
 def tela_start(screen):
-    imagem = pygame.image.load("start.png")
+    imagem = pygame.image.load("img/start.png")
     imagem = pygame.transform.scale(imagem, (screen.get_width(), screen.get_height()))
     rect = imagem.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
     esperando = True
@@ -229,7 +242,7 @@ def tela_ranking(screen, ranking_lista):
     time.sleep(4)
     
 def tela_gameover(screen):
-    imagem = pygame.image.load("gameover.png")
+    imagem = pygame.image.load("img/gameover.png")
     imagem = pygame.transform.scale(imagem, (screen.get_width(), screen.get_height()))
     rect = imagem.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
     
@@ -340,7 +353,6 @@ while jogando_app:
                 time.sleep(2)
                 tela_gameover(screen)
                 break
-            
             if(escapou):
                 inimigo_escapou_aqui = True
                 
@@ -352,14 +364,17 @@ while jogando_app:
             if wave < max_waves:
                 wave = wave + 1
                 inimigo_intervalo = inimigo_intervalo - 1
-                
+                                
                 for indice_linha in range(TAMANHO_GRADE):
                     for indice_coluna in range(TAMANHO_GRADE):
                         if tabuleiro[indice_linha][indice_coluna] in [INIMIGO, TIRO_PLAYER, COLISAO]:
                             tabuleiro[indice_linha][indice_coluna] = VAZIO
                             
+                
+                
                 qtd_inimigos = min(2 + wave - 1, TAMANHO_GRADE)
                 posiciona_inimigos(qtd_inimigos)
+                
             else:
                 vitoria = True
                 game_over = True
@@ -379,6 +394,13 @@ while jogando_app:
         text_player = font_wave.render(f"Player: {jogador}", True, (0, 255, 125))
         screen.blit(text_player, (10, 10))
         
+        tempo_atual = pygame.time.get_ticks()
+        for explosao in explosoes[:]:
+            linha, coluna, tempo_explosao = explosao
+            if tempo_atual - tempo_explosao > TEMPO_EXPLOSAO:
+                tabuleiro[linha][coluna] = VAZIO
+                explosoes.remove(explosao)
+        
         pygame.display.flip()
         clock.tick(15)
         
@@ -389,7 +411,7 @@ while jogando_app:
     if jogando_app:
         if vitoria:
             screen.fill((0, 0, 0))
-            imagem = pygame.image.load("vitoria.png")
+            imagem = pygame.image.load("img/vitoria.png")
             imagem = pygame.transform.scale(imagem, (screen.get_width(), screen.get_height()))
             rect = imagem.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
     
@@ -405,5 +427,5 @@ while jogando_app:
 
 pygame.quit()
 exit()
-            
-    
+
+
