@@ -1,5 +1,2 @@
 Tacio;1060
-d;940
-Tacio;775
-d;740
-Tácio;720
+Tácio;635

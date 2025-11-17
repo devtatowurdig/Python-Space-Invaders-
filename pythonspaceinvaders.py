@@ -9,7 +9,7 @@ pygame.mixer.init()
 explosoes = []
 TEMPO_EXPLOSAO = 300
 TAMANHO_GRADE = 21
-TAMANHO_BOX = 28
+TAMANHO_BOX = 22
 MARGEM = 10
 
 PLAYER = 'P'
